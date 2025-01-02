@@ -18,11 +18,12 @@ import AllContacts from "../../pages/AllContacts/AllContacts";
 import { GlobalStateContext } from "../../components/ContextApi/GlobalStateProvide";
 import { User } from "../../Interface/userInterface/user";
 import { Contact } from "../../Interface/contactInterface/NewContactInterface";
-import { ChatInterface } from "../../Interface/chatInterface";
-
+import { MessageInterface } from "../../Interface/chatInterface";
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 
 
 const Home = () => {
+  const [results, setResult] = useState<MessageInterface>();
   const [message, setMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isAllContact, setIsAllContact] = useState(false);
@@ -73,28 +74,46 @@ const Home = () => {
   useEffect(() => {
     if(user?.id && selectedContact?.contactId) {
       socket.current?.on("emit-message", (newMessage) => {
-        if (newMessage?.selectedContact?.userId === user?.id) {
-          const ul = document.getElementsByClassName('msgss')
-          const li = document.createElement('li')
-          li.className = 'sender'
-          li.textContent = newMessage?.content 
-          ul[0].appendChild(li)
-        } 
+        console.log(newMessage, '==========================')
+        // if (newMessage?.selectedContact?.userId === user?.id) {
+        //   const ul = document.getElementsByClassName('msgss')
+        //   const li = document.createElement('li')
+        //   li.className = 'sender'
+        //   li.textContent = newMessage?.content 
+        //   ul[0].appendChild(li)
+        // } 
         
-        if (newMessage?.selectedContact?.contactId === user?.id) {
-          const ul = document.getElementsByClassName('msgss')
-          const li = document.createElement('li')
-          li.className = 'receiver'
-          li.textContent = newMessage?.content
-          ul[0].appendChild(li)
-        }
+        // if (newMessage?.selectedContact?.contactId === user?.id) {
+        //   const ul = document.getElementsByClassName('msgss')
+        //   const li = document.createElement('li')
+        //   li.className = 'receiver'
+        //   li.textContent = newMessage?.content
+        //   ul[0].appendChild(li)
+        // }
+
+        setResult((oldResult) => {
+          const newResult = structuredClone(oldResult);
+
+          newResult?.messages?.push({
+            chatsId:  "",
+            content: newMessage.content,
+            createdAt: newMessage.timeStamp,
+            id: "",
+            isRead: false,
+            receiverId: newMessage.selectedContact.contactId,
+            senderId: newMessage.selectedContact.userId,
+            updatedAt: ""
+          })
+
+          return newResult; 
+        })
       });
     
       return () => {
         socket.current?.off("emit-message");
       };
     }
-  }, [user, selectedContact]);
+  }, [user, selectedContact,results]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,36 +136,40 @@ const Home = () => {
           `http://localhost:8000/api/v1/user/allMessages/${user?.id}/${selectedContact?.contactId}`
         );
 
-        result?.data?.messages.forEach((item: ChatInterface) => {
-          if (item?.senderId === user?.id) {
-            const ul = document.getElementsByClassName('msgss')
-            const li = document.createElement('li')
-            li.className = 'sender'
-            const span = document.createElement('span')
-            span.className = 'senderSpan'
-            const createdAtDate = new Date(item.createdAt);
+        if(result){
+          setResult(result.data)
+        }
 
-            // Format the time as "hh:mm AM/PM"
-            const formattedTime = createdAtDate.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true,
-            });
+        // result?.data?.messages.forEach((item: ChatInterface) => {
+        //   if (item?.senderId === user?.id) {
+        //     const ul = document.getElementsByClassName('msgss')
+        //     const li = document.createElement('li')
+        //     li.className = 'sender'
+        //     const span = document.createElement('span')
+        //     span.className = 'senderSpan'
+        //     const createdAtDate = new Date(item.createdAt);
 
-            span.textContent = formattedTime;
-            li.appendChild(span)
-            li.textContent = item?.content
-            ul[0].appendChild(li)
-          } 
+        //     // Format the time as "hh:mm AM/PM"
+        //     const formattedTime = createdAtDate.toLocaleTimeString('en-US', {
+        //       hour: '2-digit',
+        //       minute: '2-digit',
+        //       hour12: true,
+        //     });
+
+        //     span.textContent = formattedTime;
+        //     li.appendChild(span)
+        //     li.textContent = item?.content
+        //     ul[0].appendChild(li)
+        //   } 
           
-          if (item?.receiverId === user?.id) {
-            const ul = document.getElementsByClassName('msgss')
-            const li = document.createElement('li')
-            li.className = 'receiver'
-            li.textContent = item?.content
-            ul[0].appendChild(li)
-          }
-        })
+        //   if (item?.receiverId === user?.id) {
+        //     const ul = document.getElementsByClassName('msgss')
+        //     const li = document.createElement('li')
+        //     li.className = 'receiver'
+        //     li.textContent = item?.content
+        //     ul[0].appendChild(li)
+        //   }
+        // })
       };
       fetchData();
     }
@@ -159,7 +182,7 @@ const Home = () => {
 
   const { avatar } = context;
   console.log(avatar)
-
+console.log(results, "/////////////////////////////")
   const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${selectedContact?.name ? selectedContact?.name : 'username'}`;
   return (
     <div className="home">
@@ -263,7 +286,55 @@ const Home = () => {
 
         {/* Middel Panel For Messages */}
         <div className="rightMiddlePanel">
-          <ul className='msgss'>   
+          <ul className='msgss'> 
+            {results?.messages?.map((message, index) => {
+              console.log('++++++++++++++++++++++')
+              console.log(message?.senderId)
+              console.log(user?.id)
+              console.log(user?.id === message?.senderId)
+              if(message?.senderId === user?.id){
+                console.log('---------------------------')
+                const createdAtDate = new Date(message.createdAt);
+
+                // Format the time as "hh:mm AM/PM"
+                const formattedTime = createdAtDate.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                });
+
+                return (
+                  <li className="sender">
+                    <div key={index}>
+                    <span>{message.content}</span>
+                    <span className="messageTime">{formattedTime}</span>
+                    <span><DoneAllIcon style={{height: "13px"}}/></span>
+                  </div>
+                  </li>
+                )
+              }
+              if(message?.receiverId === user?.id){
+                const createdAtDate = new Date(message.createdAt);
+
+            // Format the time as "hh:mm AM/PM"
+              const formattedTime = createdAtDate.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              });
+
+              return (
+                <li className="receiver">
+                  <div key={index}>
+                  <span>{message.content}</span>
+                  <span className="messageTime">{formattedTime}</span>
+                  <span><DoneAllIcon style={{height: '13px'}}/></span>
+                </div>
+                </li>
+              )
+              }
+              
+            })}
           </ul>
         </div>
         <div className="rightBottomPanel">

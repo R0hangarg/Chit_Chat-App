@@ -1,12 +1,16 @@
 .home {
   display: flex;
   flex-direction: row;
+  height: 100vh;
 }
 
 .homeleft {
-  width: 56vw;
+  width: 40%;
+  height: 100vh;
   background-color: #f3eded;
-  position: relative;
+  position: absolute;
+  left: 0;
+  padding-left: 10px;
 }
 
 .homeleft .leftUpperPanel {
@@ -65,8 +69,11 @@
 }
 
 .homeright {
-  width: 95vw;
-  margin-right: 10px;
+  width: 60%;
+  height: 100vh;
+  position: absolute;
+  right: 0;
+  /* margin-right: 10px; */
 }
 
 .upperPanel {
@@ -125,6 +132,8 @@
   border-radius: 10px; /* Rounded corners */
   max-width: 60%; /* Limit message width */
   word-wrap: break-word; /* Handle long words */
+  font-family: Helvetica, sans-serif;
+  color: rgb(31, 31, 31);
 }
 
 .receiver{
@@ -134,11 +143,16 @@
   border-radius: 10px; /* Rounded corners */
   max-width: 60%; /* Limit message width */
   word-wrap: break-word; /* Handle long words */
+  font-family: Helvetica, sans-serif;
+  color: rgb(31, 31, 31);
 }
 
-.senderSpan {
-  color: black
+.messageTime{
+  font-size: 11px;
+  margin-left: 5px;
+  
 }
+
 /* .sender li {
   background-color: rgb(198, 210, 203);
   margin: 2px;
@@ -190,7 +204,8 @@
 }
 .rightBottomPanel {
   background-color: rgb(198, 210, 203);
-  width: 61vw;
+  width: 90%;
+  margin-bottom: 0px;
   height: 7vh;
   display: flex;
   justify-content: space-between;
