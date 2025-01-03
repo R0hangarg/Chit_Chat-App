@@ -6,7 +6,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import DuoIcon from "@mui/icons-material/Duo";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
 import AddIcon from "@mui/icons-material/Add";
-import MicIcon from "@mui/icons-material/Mic";
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import SendIcon from "@mui/icons-material/Send";
 import axios from "axios";
@@ -20,10 +19,15 @@ import { User } from "../../Interface/userInterface/user";
 import { Contact } from "../../Interface/contactInterface/NewContactInterface";
 import { MessageInterface } from "../../Interface/chatInterface";
 import DoneAllIcon from '@mui/icons-material/DoneAll';
-
+import { getRandomEmoji } from "../../components/Emojis";
+import Speech from "../../components/SpeechRecognition";
+import Picker, { EmojiClickData } from 'emoji-picker-react'
 
 const Home = () => {
   const [results, setResult] = useState<MessageInterface>();
+  const [emoji, setEmoji] = useState('');
+  const [selectEmoji, setselectEmoji] = useState(false)
+  const [allContacts, setAllContacts] = useState<Contact[] | undefined>()
   const [message, setMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isAllContact, setIsAllContact] = useState(false);
@@ -31,6 +35,7 @@ const Home = () => {
   const [user, setUser] = useState<User | null>(null);
   const [vertIconClick, setVertIconClick] = useState(false);
   const socket = useRef<Socket | null>(null);
+  const [speechToggle, setSpeechToggle] = useState(false)
   // const socket = io("http://localhost:8000");
 
   useEffect(() => {
@@ -50,31 +55,30 @@ const Home = () => {
         String(user.id) < String(selectedContact.contactId)
           ? `${user.id}_${selectedContact.contactId}`
           : `${selectedContact.contactId}_${user.id}`;
-  
+
       console.log("Generated Room ID:", roomId); // Debugging output
       socket.current?.emit("join-room", roomId);
     }
   }, [user, selectedContact]);
 
-  
+
   function handleClick() {
     if (user?.id && selectedContact?.id) {
       const roomId =
         String(user.id) < String(selectedContact.contactId)
           ? `${user.id}_${selectedContact.contactId}`
           : `${selectedContact.contactId}_${user.id}`;
-  
-          
-          socket.current?.emit("join-room", roomId);
-          const timeStamp = new Date().toISOString();
-          socket.current?.emit("send-message", { selectedContact: selectedContact, content: message, timeStamp: timeStamp }, roomId);
-          setMessage("");
+
+
+      socket.current?.emit("join-room", roomId);
+      const timeStamp = new Date().toISOString();
+      socket.current?.emit("send-message", { selectedContact: selectedContact, content: message, timeStamp: timeStamp }, roomId);
+      setMessage("");
     }
   }
   useEffect(() => {
-    if(user?.id && selectedContact?.contactId) {
+    if (user?.id && selectedContact?.contactId) {
       socket.current?.on("emit-message", (newMessage) => {
-        console.log(newMessage, '==========================')
         // if (newMessage?.selectedContact?.userId === user?.id) {
         //   const ul = document.getElementsByClassName('msgss')
         //   const li = document.createElement('li')
@@ -82,7 +86,7 @@ const Home = () => {
         //   li.textContent = newMessage?.content 
         //   ul[0].appendChild(li)
         // } 
-        
+
         // if (newMessage?.selectedContact?.contactId === user?.id) {
         //   const ul = document.getElementsByClassName('msgss')
         //   const li = document.createElement('li')
@@ -92,10 +96,14 @@ const Home = () => {
         // }
 
         setResult((oldResult) => {
-          const newResult = structuredClone(oldResult);
+          const newResult = structuredClone(oldResult) || {};
+
+          if (!newResult.messages) {
+            newResult.messages = [];
+          }
 
           newResult?.messages?.push({
-            chatsId:  "",
+            chatsId: "",
             content: newMessage.content,
             createdAt: newMessage.timeStamp,
             id: "",
@@ -105,15 +113,15 @@ const Home = () => {
             updatedAt: ""
           })
 
-          return newResult; 
+          return newResult;
         })
       });
-    
+
       return () => {
         socket.current?.off("emit-message");
       };
     }
-  }, [user, selectedContact,results]);
+  }, [user, selectedContact, results]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -128,7 +136,21 @@ const Home = () => {
     fetchData();
   }, []);
 
-  
+  useEffect(() => {
+    if (user) {
+      const fetchContacts = async () => {
+        const result = await axios.get(`http://localhost:8000/api/v1/user/allContacts/${user?.id}`)
+
+        if (result) {
+          setAllContacts(result.data.data)
+          setEmoji(getRandomEmoji())
+        }
+      }
+
+      fetchContacts()
+    }
+  }, [user])
+
   useEffect(() => {
     if (user && selectedContact) {
       const fetchData = async () => {
@@ -136,7 +158,7 @@ const Home = () => {
           `http://localhost:8000/api/v1/user/allMessages/${user?.id}/${selectedContact?.contactId}`
         );
 
-        if(result){
+        if (result) {
           setResult(result.data)
         }
 
@@ -161,7 +183,7 @@ const Home = () => {
         //     li.textContent = item?.content
         //     ul[0].appendChild(li)
         //   } 
-          
+
         //   if (item?.receiverId === user?.id) {
         //     const ul = document.getElementsByClassName('msgss')
         //     const li = document.createElement('li')
@@ -180,9 +202,13 @@ const Home = () => {
     throw new Error("useGlobalState must be used within a GlobalStateProvider");
   }
 
+  const onEmojiClick = (emojiObject: EmojiClickData) => {
+    setMessage(emojiObject.emoji);
+  };
+
   const { avatar } = context;
   console.log(avatar)
-console.log(results, "/////////////////////////////")
+
   const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${selectedContact?.name ? selectedContact?.name : 'username'}`;
   return (
     <div className="home">
@@ -233,7 +259,29 @@ console.log(results, "/////////////////////////////")
           <p>Favourites</p>
           <p>Groups</p>
         </div>
-        <div className="leftBottomPanel">Chatings</div>
+        <div className="leftBottomPanel">
+          {
+            allContacts && allContacts?.length > 0 ? (
+              allContacts?.map((contact: Contact) => {
+                return <div className="contactList" onClick={() => setSelectedContact(contact)}>
+                  <span className="contactListDp">
+                    <Avatar
+                      src={boyProfilePic}
+                      alt="User"
+                      sx={{ height: "4vh", width: "4vh" }}
+                    />
+                  </span>
+                  <span className="contactListName">{contact?.name}</span>
+                  <span className="contactListEmoji">{emoji}</span>
+                </div>
+              })
+            ) : (
+              <div>
+                No Contacts Added
+              </div>
+            )
+          }
+        </div>
 
         {isOpen ? (
           <div className="AddNewContact">
@@ -271,7 +319,7 @@ console.log(results, "/////////////////////////////")
             <Avatar
               src={boyProfilePic}
               alt="User"
-              sx={{ height: "5vh", width: "5vh" }}
+              sx={{ height: "4vh", width: "4vh" }}
             />
             <h3>
               {selectedContact?.name ? selectedContact?.name : "User Name"}
@@ -286,14 +334,9 @@ console.log(results, "/////////////////////////////")
 
         {/* Middel Panel For Messages */}
         <div className="rightMiddlePanel">
-          <ul className='msgss'> 
+          <ul className='msgss'>
             {results?.messages?.map((message, index) => {
-              console.log('++++++++++++++++++++++')
-              console.log(message?.senderId)
-              console.log(user?.id)
-              console.log(user?.id === message?.senderId)
-              if(message?.senderId === user?.id){
-                console.log('---------------------------')
+              if (message?.senderId === user?.id) {
                 const createdAtDate = new Date(message.createdAt);
 
                 // Format the time as "hh:mm AM/PM"
@@ -306,43 +349,51 @@ console.log(results, "/////////////////////////////")
                 return (
                   <li className="sender">
                     <div key={index}>
-                    <span>{message.content}</span>
-                    <span className="messageTime">{formattedTime}</span>
-                    <span><DoneAllIcon style={{height: "13px"}}/></span>
-                  </div>
+                      <span>{message.content}</span>
+                      <span className="messageTime">{formattedTime}</span>
+                      <span><DoneAllIcon style={{ height: "13px" }} /></span>
+                    </div>
                   </li>
                 )
               }
-              if(message?.receiverId === user?.id){
+              if (message?.receiverId === user?.id) {
                 const createdAtDate = new Date(message.createdAt);
 
-            // Format the time as "hh:mm AM/PM"
-              const formattedTime = createdAtDate.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-              });
+                // Format the time as "hh:mm AM/PM"
+                const formattedTime = createdAtDate.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                });
 
-              return (
-                <li className="receiver">
-                  <div key={index}>
-                  <span>{message.content}</span>
-                  <span className="messageTime">{formattedTime}</span>
-                  <span><DoneAllIcon style={{height: '13px'}}/></span>
-                </div>
-                </li>
-              )
+                return (
+                  <li className="receiver">
+                    <div key={index}>
+                      <span>{message.content}</span>
+                      <span className="messageTime">{formattedTime}</span>
+                      <span><DoneAllIcon style={{ height: '13px' }} /></span>
+                    </div>
+                  </li>
+                )
               }
-              
+
             })}
           </ul>
+          {
+            selectEmoji ? <div className="emojiPicker">
+              <Picker onEmojiClick={onEmojiClick} width="300px"
+                height="350px" />
+            </div> : ''
+          }
         </div>
         <div className="rightBottomPanel">
           <div className="icons">
-            <InsertEmoticonIcon
-              sx={{ height: "4vh", width: "4vh" }}
-              className="InsertEmoticonIcon"
-            />
+            <div onClick={() => setselectEmoji(!selectEmoji)}>
+              <InsertEmoticonIcon
+                sx={{ height: "4vh", width: "4vh" }}
+                className="InsertEmoticonIcon"
+              />
+            </div>
             <AddIcon sx={{ height: "4vh", width: "4vh" }} className="AddIcon" />
           </div>
           <input
@@ -356,10 +407,12 @@ console.log(results, "/////////////////////////////")
               }
             }}
           />
-          {message === "" ? (
-            <MicIcon sx={{ height: "4vh", width: "4vh" }} className="MicIcon" />
+          {message === "" || speechToggle ? (
+            <div onClick={() => setSpeechToggle(!speechToggle)}>
+              <Speech speechToggle={speechToggle} setMessage={setMessage} />
+            </div>
           ) : (
-            <span onClick={handleClick}>
+            !speechToggle && <span onClick={handleClick}>
               <SendIcon
                 sx={{ height: "4vh", width: "4vh" }}
                 className="SendIcon" // Call your send message function on click

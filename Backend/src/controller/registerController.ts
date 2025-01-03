@@ -88,7 +88,7 @@ export const loginUserController = async(req:Request, res: Response): Promise<an
 
         const token = await createToken(data.phone);
         const options ={
-            expires:new Date(Date.now()+90*24*60*60*1000),
+            expires:new Date(Date.now()+1*24*60*60*1000),
         };
 
         return res.status(201).cookie("token",token,options).json({
